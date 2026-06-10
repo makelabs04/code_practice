@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MakeLabs — Online Compiler & IDE</title>
+  <link rel="icon" type="image/png" href="./images/logo.png" />
+  <meta name="description" content="Run Java, Python, C++, C, C#, JavaScript, PHP, TypeScript, Go, Rust, Kotlin online." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/eclipse.min.css">
+
+  <!-- File Manager + IDE extra styles -->
+  <style>
+    /* ── File Manager Panel ─────────────────────────────── */
+    #file-manager-panel {
+      width: 220px;
+      min-width: 160px;
+      max-width: 320px;
+      height: 100%;
+      background: var(--bg-secondary, #161b22);
+      border-right: 1px solid var(--border, #30363d);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+      transition: width 0.2s ease;
+      position: relative;
+      z-index: 10;
+    }
+    #file-manager-panel.collapsed {
+      width: 0 !important;
+      min-width: 0 !important;
+      border-right: none;
+      overflow: hidden;
+    }
+    .fm-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--border, #30363d);
+      flex-shrink: 0;
+    }
+    .fm-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted, #8b949e);
+    }
+    .fm-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .fm-icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted, #8b949e);
+      font-size: 14px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      line-height: 1;
+      transition: color 0.15s, background 0.15s;
+    }
+    .fm-icon-btn:hover {
+      color: var(--text-primary, #e6edf3);
+      background: rgba(255,255,255,0.08);
+    }
+    .fm-tree {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+    .fm-file {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 12.5px;
+      color: var(--text-secondary, #c9d1d9);
+      border-radius: 0;
+      position: relative;
+      transition: background 0.1s;
+      user-select: none;
+    }
+    .fm-file:hover {
+      background: rgba(255,255,255,0.05);
+    }
+    .fm-file.active {
+      background: rgba(88,166,255,0.12);
+      color: #58a6ff;
+    }
+    .fm-file .fm-file-icon {
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .fm-file .fm-file-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .fm-file .fm-file-actions {
+      display: none;
+      gap: 2px;
+    }
+    .fm-file:hover .fm-file-actions {
+      display: flex;
+    }
+    .fm-file-action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted, #8b949e);
+      font-size: 11px;
+      padding: 1px 3px;
+      border-radius: 3px;
+    }
+    .fm-file-action-btn:hover {
+      color: #f85149;
+      background: rgba(248,81,73,0.1);
+    }
+    .fm-empty {
+      padding: 16px 12px;
+      font-size: 12px;
+      color: var(--text-muted, #8b949e);
+      text-align: center;
+      line-height: 1.6;
+    }
+    .fm-footer {
+      padding: 8px 10px;
+      border-top: 1px solid var(--border, #30363d);
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .fm-footer .fm-add-btn {
+      flex: 1;
+      background: rgba(88,166,255,0.1);
+      border: 1px solid rgba(88,166,255,0.25);
+      color: #58a6ff;
+      font-size: 11.5px;
+      padding: 5px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .fm-footer .fm-add-btn:hover {
+      background: rgba(88,166,255,0.2);
+    }
+    .fm-resize-handle {
+      width: 4px;
+      cursor: col-resize;
+      background: transparent;
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 20;
+    }
+    .fm-resize-handle:hover { background: rgba(88,166,255,0.4); }
+
+    /* ── File Manager Toggle Button in sidebar ───────── */
+    #btn-toggle-fm {
+      /* styled as sidebar-btn */
+    }
+
+    /* ── Library badge in lang tab ─────────────────── */
+    .lib-badge {
+      font-size: 9px;
+      background: rgba(56,200,100,0.15);
+      color: #3dc96c;
+      border: 1px solid rgba(56,200,100,0.25);
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      vertical-align: middle;
+      margin-left: 2px;
+    }
+
+    /* ── New File Modal ───────────────────────────── */
+    #new-file-modal .modal { max-width: 400px; }
+    .nf-lang-preview-wrap {
+      margin-top: 14px;
+    }
+    .nf-preview-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-muted, #8b949e);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .nf-lang-preview {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 7px;
+      border: 1px solid var(--border, #30363d);
+      background: var(--bg-primary, #0d1117);
+      font-size: 13px;
+      font-weight: 500;
+      min-height: 40px;
+      transition: all 0.2s;
+    }
+    .nf-lang-preview.empty {
+      color: var(--text-muted, #8b949e);
+      border-style: dashed;
+    }
+    .nf-lang-preview.detected {
+      color: var(--text-primary, #e6edf3);
+      border-color: rgba(88,166,255,0.4);
+      background: rgba(88,166,255,0.06);
+    }
+    .nf-lang-preview.detected svg {
+      color: #58a6ff;
+      flex-shrink: 0;
+    }
+    .nf-lang-preview.unknown {
+      color: var(--text-muted, #8b949e);
+      font-style: italic;
+    }
+    /* Hide old fm-footer since new-file button moved to header */
+    .fm-footer { display: none; }
+    .lang-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .lang-picker-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 6px;
+      border: 1px solid var(--border, #30363d);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11.5px;
+      color: var(--text-secondary, #c9d1d9);
+      transition: all 0.15s;
+      background: var(--bg-editor, #0d1117);
+    }
+    .lang-picker-item:hover {
+      border-color: #58a6ff;
+      background: rgba(88,166,255,0.07);
+      color: #58a6ff;
+    }
+    .lang-picker-item.selected {
+      border-color: #58a6ff;
+      background: rgba(88,166,255,0.14);
+      color: #58a6ff;
+    }
+    .lang-picker-icon { font-size: 20px; }
+
+    /* ── Rename inline input ───────────────────────── */
+    .fm-rename-input {
+      background: var(--bg-editor, #0d1117);
+      border: 1px solid #58a6ff;
+      color: var(--text-primary, #e6edf3);
+      font-size: 12.5px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      width: 100%;
+      outline: none;
+    }
+
+    /* ── Main layout: sidebar + file manager + editor ── */
+    #app {
+      display: grid;
+      grid-template-rows: var(--topbar-h, 48px) 1fr;
+      grid-template-columns: var(--sidebar-w, 44px) 1fr;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #topbar {
+      grid-column: 1 / -1;
+    }
+    #sidebar {
+      grid-row: 2;
+      grid-column: 1;
+    }
+    #ide-body {
+      grid-row: 2;
+      grid-column: 2;
+      display: flex;
+      overflow: hidden;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── TOP BAR ── -->
+  <header id="topbar">
+    <a href="#" class="logo">
+      <img src="./images/logo.png" alt="MakeLabs Logo" class="logo-icon" style="border-radius: 50%; object-fit: cover;" />
+      <span class="logo-text">Make<span>Labs</span></span>
+    </a>
+    <div class="topbar-center">
+      <div class="lang-tabs-wrapper">
+        <button class="lang-scroll-btn" id="lang-scroll-left" title="Scroll left" aria-label="Scroll language tabs left">&#8249;</button>
+        <div id="lang-tabs" class="lang-tabs"></div>
+        <button class="lang-scroll-btn" id="lang-scroll-right" title="Scroll right" aria-label="Scroll language tabs right">&#8250;</button>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <!-- Backend live status indicator -->
+      <div id="backend-status" title="Backend connection status">
+        <span class="dot"></span>
+        <span>Connecting…</span>
+      </div>
+
+      <button class="btn-secondary" id="btn-reset" title="Reset to default code">
+        <span>↺</span><span class="btn-label">Reset</span>
+      </button>
+      <button class="btn-icon" id="btn-copy" title="Copy code" style="width: 36px; height: 36px; font-size: 16px;">📋</button>
+      <button class="btn-icon" id="btn-clear" title="Clear editor" style="width: 36px; height: 36px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M9 3h6l1 1h4v2H4V4h4zm-4 4h14l-1 13H6L5 7zm5 2v9h1V9zm4 0v9h1V9z"/>
+        </svg>
+      </button>
+      <button class="btn-secondary" id="btn-save" title="Save & Share">
+        <span>🔗</span><span class="btn-label">Share</span>
+      </button>
+      <button class="btn-run" id="run-btn">
+        <span class="run-icon">▶</span> Run
+      </button>
+      <button class="btn-secondary" id="btn-ask-ai" title="Get AI Help" style="border-color: #a371f7; color: #a371f7;">
+        <span>✨</span><span class="btn-label">Ask AI</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── SIDEBAR ── -->
+  <aside id="sidebar"></aside>
+
+  <!-- ── IDE BODY: File Manager + Editor + Output ── -->
+  <div id="ide-body">
+
+    <!-- File Manager Panel -->
+    <div id="file-manager-panel">
+      <div class="fm-resize-handle" id="fm-resize-handle"></div>
+      <div class="fm-header">
+        <span class="fm-title">Explorer</span>
+        <div class="fm-actions">
+          <button class="fm-icon-btn" id="btn-fm-new-file" title="New File">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+          </button>
+          <button class="fm-icon-btn" id="btn-fm-download" title="Download all files">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button class="fm-icon-btn" id="btn-fm-collapse" title="Collapse panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fm-tree" id="fm-tree">
+        <div class="fm-empty">No files yet.<br/>Click <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11" style="vertical-align:middle"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg> to start.</div>
+      </div>
+    </div>
+
+    <!-- ── MAIN ── -->
+    <main id="main">
+
+      <!-- Editor Pane -->
+      <section id="editor-pane">
+        <div class="editor-topbar">
+          <div class="editor-breadcrumb">
+            <span>~/codecraft</span>
+            <span style="color:var(--text-muted)">/</span>
+            <span class="editor-filename" id="editor-filename">main.py</span>
+            <span class="lang-badge" id="editor-lang-badge">Python</span>
+          </div>
+          <div class="editor-meta">
+            <span id="editor-lines">1 lines</span>
+            <span id="editor-cursor">Ln 1, Col 1</span>
+          </div>
+        </div>
+        <div id="editor-wrapper">
+          <div id="error-overlay"></div>
+          <textarea
+            id="code-editor"
+            spellcheck="false" autocomplete="off"
+            autocorrect="off" autocapitalize="off"
+            placeholder="Write your code here..."
+          ></textarea>
+        </div>
+      </section>
+
+      <div id="resize-handle"></div>
+
+      <!-- Output Pane -->
+      <section id="output-pane">
+        <div class="output-tabs">
+          <button class="output-tab active" data-tab="output">
+            Output <span class="tab-badge" id="tab-badge-output">!</span>
+          </button>
+          <button class="output-tab" data-tab="info">Details</button>
+        </div>
+
+        <div class="exec-status" id="exec-status">
+          <span>◉</span>&nbsp;Ready — write code and press Run
+        </div>
+
+        <!-- Scrollable output area -->
+        <div class="output-content">
+          <!-- Output Panel -->
+          <div class="output-panel active" id="output-panel">
+            <div id="output-terminal"></div>
+          </div>
+
+          <!-- Info Panel -->
+          <div class="output-panel" id="info-panel">
+            <div class="info-card">
+              <h4>⚡ Execution Details</h4>
+              <div class="info-stat"><span class="label">Language</span><span class="value" id="info-lang">—</span></div>
+              <div class="info-stat"><span class="label">Execution Time</span><span class="value" id="info-time">—</span></div>
+              <div class="info-stat"><span class="label">Engine</span><span class="value" id="info-engine">—</span></div>
+              <div class="info-stat"><span class="label">Memory Used</span><span class="value" id="info-memory">—</span></div>
+              <div class="info-stat"><span class="label">Exit Code</span><span class="value" id="info-exit">—</span></div>
+              <div class="info-stat"><span class="label">Status</span><span class="value" id="info-status">—</span></div>
+              <div class="info-stat"><span class="label">Output Lines</span><span class="value" id="info-lines-out">—</span></div>
+              <div class="info-stat"><span class="label">Errors</span><span class="value" id="info-errors">—</span></div>
+            </div>
+            <div class="info-card">
+              <h4>⌨ Keyboard Shortcuts</h4>
+              <div class="info-stat"><span class="label">Run code</span><span class="value"><kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">Enter</kbd></span></div>
+              <div class="info-stat"><span class="label">Toggle comment</span><span class="value"><kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">/</kbd></span></div>
+              <div class="info-stat"><span class="label">Indent</span><span class="value"><kbd class="kbd">Tab</kbd></span></div>
+              <div class="info-stat"><span class="label">Copy code</span><span class="value"><kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">C</kbd></span></div>
+            </div>
+            <div class="info-card">
+              <h4>🌐 Supported Languages</h4>
+              <div class="info-stat"><span class="label">☕ Java</span><span class="value green">Judge0</span></div>
+              <div class="info-stat"><span class="label">🐍 Python</span><span class="value green">Piston ✦libs</span></div>
+              <div class="info-stat"><span class="label">⚡ C++</span><span class="value green">Judge0</span></div>
+              <div class="info-stat"><span class="label">🔧 C</span><span class="value green">Judge0</span></div>
+              <div class="info-stat"><span class="label">💜 C#</span><span class="value green">Judge0</span></div>
+              <div class="info-stat"><span class="label">🌐 JavaScript</span><span class="value green">Piston ✦libs</span></div>
+              <div class="info-stat"><span class="label">🐘 PHP</span><span class="value green">Judge0</span></div>
+              <div class="info-stat"><span class="label">💙 TypeScript</span><span class="value green">Piston ✦libs</span></div>
+              <div class="info-stat"><span class="label">💎 Ruby</span><span class="value green">Piston</span></div>
+              <div class="info-stat"><span class="label">🐹 Go</span><span class="value green">Piston</span></div>
+              <div class="info-stat"><span class="label">🦀 Rust</span><span class="value green">Piston</span></div>
+              <div class="info-stat"><span class="label">🎯 Kotlin</span><span class="value green">Piston</span></div>
+              <div class="info-stat"><span class="label">🖥️ Bash</span><span class="value green">Piston</span></div>
+              <div class="info-stat"><span class="label">🌍 HTML</span><span class="value green">Preview</span></div>
+              <div class="info-stat"><span class="label">🎨 CSS</span><span class="value green">Preview</span></div>
+            </div>
+          </div>
+        </div><!-- /output-content -->
+
+        <!-- STDIN BAR — anchored below output -->
+        <div id="inline-input-prompt">
+          <span class="inline-input-prefix">▶</span>
+          <input
+            id="stdin-input"
+            type="text"
+            class="inline-input-field"
+            placeholder="Type your input and press Enter…"
+            spellcheck="false"
+            autocomplete="off"
+          />
+          <span class="inline-input-cursor"></span>
+        </div>
+
+        <div id="status-bar">
+          <div class="status-left">
+            <span id="status-lang">Python</span>
+            <span id="status-msg"></span>
+          </div>
+          <div class="status-right">
+            <span id="status-chars">0 chars</span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div><!-- /ide-body -->
+
+</div><!-- /app -->
+
+<!-- ── MODALS ── -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">⚙ Editor Settings</h3>
+      <button class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="form-group">
+      <label for="setting-font-size">Font Size (px)</label>
+      <input type="number" id="setting-font-size" value="15" min="10" max="30" />
+    </div>
+    <div class="form-group">
+      <label for="setting-tab-size">Tab Size (spaces)</label>
+      <select id="setting-tab-size">
+        <option value="2">2</option>
+        <option value="4" selected>4</option>
+        <option value="8">8</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="setting-line-wrap" checked style="width:16px;height:16px;cursor:pointer;" />
+        <label for="setting-line-wrap" style="font-size:13px;color:var(--text-secondary);cursor:pointer;margin:0;">
+          Enable Line Wrapping
+        </label>
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-save-settings" style="margin-top: 10px;">Apply & Save</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="help-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">❓ Help & Shortcuts</h3>
+      <button class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div style="margin-bottom: 20px;">
+      <h4 style="font-size: 13px; color: var(--accent-blue); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">⌨ Keyboard Shortcuts</h4>
+      <div style="display: grid; gap: 10px; font-size: 13px; color: var(--text-secondary);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Run Code</span> <span><kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">Enter</kbd></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Toggle Comment</span> <span><kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">/</kbd></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Indent Code</span> <span><kbd class="kbd">Tab</kbd></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Copy All Code</span> <span><kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">C</kbd></span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h4 style="font-size: 13px; color: var(--accent-blue); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">💡 Pro Tips</h4>
+      <ul style="font-size: 12px; color: var(--text-secondary); padding-left: 18px; line-height: 1.7; margin: 0;">
+        <li>Switch languages using the top tabs. Your code is automatically saved for each language!</li>
+        <li>Click the <strong>📁 Explorer</strong> icon in the sidebar to open the File Manager.</li>
+        <li>Python and JavaScript run on <strong>Piston</strong> which supports many popular libraries.</li>
+        <li>Use the <strong>📂 Examples</strong> folder to instantly load pre-written templates.</li>
+        <li>If your program needs input, just type it in the input bar that appears after clicking Run.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="save-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">🔗 Save & Share Snippet</h3>
+      <button class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="form-group">
+      <label for="snippet-title">Snippet Title</label>
+      <input type="text" id="snippet-title" placeholder="My awesome code..." maxlength="120" />
+    </div>
+    <div class="form-group">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="snippet-public" checked style="width:16px;height:16px;cursor:pointer;" />
+        <label for="snippet-public" style="font-size:13px;color:var(--text-secondary);cursor:pointer;margin:0;">
+          Make this snippet public
+        </label>
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-do-save">Save Snippet</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="examples-modal">
+  <div class="modal" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 class="modal-title">📂 Load Example Code</h3>
+      <button class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">
+      Select an example below to instantly load it into the editor.
+    </p>
+    <div class="examples-grid" id="examples-container"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="share-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">✅ Snippet Saved!</h3>
+      <button class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px;">
+      Share this link with anyone:
+    </p>
+    <div class="share-url-box">
+      <input type="text" id="share-url" readonly />
+      <button class="btn-secondary" id="btn-copy-url">Copy</button>
+    </div>
+    <div style="display: flex; gap: 8px; margin-top: 15px;">
+      <button class="btn-primary" id="btn-web-share" style="background: #1f6feb;">Share via...</button>
+      <a id="btn-whatsapp-share" target="_blank" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; justify-content:center; flex:1;">WhatsApp</a>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="ai-modal">
+  <div class="modal" style="max-width: 600px; width: 95%; display: flex; flex-direction: column; height: 75vh;">
+    <div class="modal-header">
+      <h3 class="modal-title" style="color: #a371f7;">✨ AI Code Assistant</h3>
+      <button class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div id="ai-chat-history" style="flex-grow: 1; overflow-y: auto; padding: 14px; background: var(--bg-editor); border-radius: 6px; border: 1px solid var(--border); font-family: var(--font-main); font-size: 13.5px; display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px;">
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <input type="text" id="ai-chat-input" placeholder="Ask a follow up question..." style="flex-grow: 1; padding: 12px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary); outline: none;">
+      <button id="btn-ai-send" class="btn-primary" style="background: #a371f7; border: none; padding: 0 20px;">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- New File Modal -->
+<div class="modal-overlay" id="new-file-modal">
+  <div class="modal" style="max-width: 400px;">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="vertical-align:middle;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+        New File
+      </h3>
+      <button class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="form-group">
+      <label for="new-file-name">File Name</label>
+      <input type="text" id="new-file-name" placeholder="e.g. solution.py or index.html" maxlength="60" autocomplete="off" />
+    </div>
+    <div class="nf-lang-preview-wrap">
+      <span class="nf-preview-label">Detected Language</span>
+      <div id="new-file-lang-preview" class="nf-lang-preview empty">
+        <span>Type a filename to detect language</span>
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-create-file" style="margin-top: 16px;">Create File</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/comment/comment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/php/php.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/ruby/ruby.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/go/go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/rust/rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/shell/shell.min.js"></script>
+
+<script src="js/app.js"></script>
+
+</body>
+</html>
