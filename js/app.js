@@ -1,7 +1,7 @@
 // frontend/js/app.js
 // ── MakeLabs Main Application ─────────────────────────────────────────
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 // ── State ──────────────────────────────────────────────────────────────
 const state = {
