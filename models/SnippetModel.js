@@ -6,7 +6,7 @@ class SnippetModel {
   static async create(data) {
     const id = uuidv4().substring(0, 8);
     const sql = `
-      INSERT INTO codecraft_db.snippets (id, title, language, source_code, is_public, created_at)
+      INSERT INTO snippets (id, title, language, source_code, is_public, created_at)
       VALUES (?, ?, ?, ?, ?, NOW())
     `;
     const [result] = await pool.execute(sql, [
