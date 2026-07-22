@@ -1700,53 +1700,6 @@ function appendChatMessage(sender, text) {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-async function saveCurrentSnippet() {
-    try {
-        const token = localStorage.getItem('cc-auth-token');
-
-        if (!token) {
-            alert('Please login first.');
-            return;
-        }
-
-        const code = state.editor.getValue();
-        const language = state.currentLanguage || 'python';
-
-        const title =
-            state.activeFile?.name?.replace(/\.[^/.]+$/, '') ||
-            'Untitled Snippet';
-
-        const response = await fetch('/api/snippets', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                title: title,
-                language: language,
-                source_code: code,
-                is_public: false
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Unable to save file');
-        }
-
-        alert('File saved successfully.');
-    } catch (error) {
-        console.error(error);
-        alert(error.message);
-    }
-}
-
-document
-    .getElementById('save-snippet-btn')
-    ?.addEventListener('click', saveCurrentSnippet);
-
 document.addEventListener('DOMContentLoaded', () => {
   const btnAiSend = $('btn-ai-send');
   const aiInput = $('ai-chat-input');
