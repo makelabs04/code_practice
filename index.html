@@ -332,7 +332,7 @@
     </div>
 
     <div class="topbar-actions">
-      <div class="auth-user"><span id="auth-user-name" class="auth-user-name">User</span><button id="auth-logout" class="auth-logout">Logout</button></div>
+      <div class="auth-user"><span id="auth-user-name" class="auth-user-name">User</span><button type="button" id="auth-logout" class="auth-logout" onclick="window.Auth && window.Auth.logout()">Logout</button></div>
       <!-- Backend live status indicator -->
       <div id="backend-status" title="Backend connection status">
         <span class="dot"></span>
