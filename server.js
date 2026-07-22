@@ -12,6 +12,8 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 // Route imports
 const codeRoutes = require('./routes/codeRoutes');
 const snippetRoutes = require('./routes/snippetRoutes');
+const authRoutes = require('./routes/authRoutes');
+const requireAuth = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -76,7 +78,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 // ── AI Chat Assistant Route ──
-app.post('/api/ai/chat', async (req, res) => {
+app.post('/api/ai/chat', requireAuth, async (req, res) => {
   const { chatHistory } = req.body;
   
   if (!chatHistory || chatHistory.length === 0) {
@@ -100,6 +102,7 @@ app.post('/api/ai/chat', async (req, res) => {
   }
 });
 // ─── API Routes ───────────────────────────────────────────────────────────────
+app.use('/api/auth', authRoutes);
 app.use('/api/code', codeRoutes);
 app.use('/api/snippets', snippetRoutes);
 

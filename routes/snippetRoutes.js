@@ -1,6 +1,8 @@
 // backend/routes/snippetRoutes.js
 const express = require('express');
 const router = express.Router();
+const requireAuth = require('../middleware/auth');
+router.use(requireAuth);
 const SnippetController = require('../controllers/snippetController');
 
 // @route   POST /api/snippets

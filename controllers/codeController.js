@@ -79,6 +79,7 @@ class CodeController {
       const errorOutput = [compileOutput, stderr].filter(Boolean).join('\n').trim();
 
       ExecutionModel.saveExecution({
+        user_id: req.user.id,
         language,
         source_code,
         stdin,
@@ -228,7 +229,7 @@ class CodeController {
   // ── GET /api/code/stats ──────────────────────────────────────────
   static async getStats(req, res) {
     try {
-      const stats = await ExecutionModel.getStats();
+      const stats = await ExecutionModel.getStats(req.user.id);
       return res.json({ success: true, stats });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });

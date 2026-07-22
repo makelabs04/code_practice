@@ -1,6 +1,8 @@
 // backend/routes/codeRoutes.js
 const express = require('express');
 const router = express.Router();
+const requireAuth = require('../middleware/auth');
+router.use(requireAuth);
 const CodeController = require('../controllers/codeController');
 
 // @route   POST /api/code/run

@@ -632,7 +632,7 @@ async function runCode() {
   try {
     const response = await fetch(`${API_BASE}/code/run`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...window.Auth.headers() },
       body: JSON.stringify({ language: state.currentLang, source_code: code, stdin }),
     });
     const data = await response.json();
@@ -1251,7 +1251,7 @@ async function saveSnippet() {
   try {
     const res = await fetch(`${API_BASE}/snippets`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...window.Auth.headers() },
       body: JSON.stringify({ title, language: state.currentLang, source_code: code, is_public: isPublic }),
     });
     const data = await res.json();
@@ -1362,7 +1362,7 @@ function bindFmResizeHandle() {
 // ── File Manager ──────────────────────────────────────────────────────
 function initFileManager() {
   // Load saved files from localStorage
-  const saved = localStorage.getItem('ml-files');
+  const saved = localStorage.getItem(window.Auth.storageKey('ml-files'));
   if (saved) {
     try { state.files = JSON.parse(saved); } catch { state.files = []; }
   }
@@ -1391,7 +1391,7 @@ function initFileManager() {
 }
 
 function saveFilesToStorage() {
-  localStorage.setItem('ml-files', JSON.stringify(state.files));
+  localStorage.setItem(window.Auth.storageKey('ml-files'), JSON.stringify(state.files));
 }
 
 function toggleFileManager(forceOpen) {
@@ -1664,7 +1664,7 @@ async function fetchAiResponse() {
   try {
     const response = await fetch(`${API_BASE}/ai/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...window.Auth.headers() },
       body: JSON.stringify({ chatHistory: currentChatHistory }),
     });
     const data = await response.json();
