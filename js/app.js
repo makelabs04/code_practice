@@ -1697,7 +1697,8 @@ function createNewFile() {
   // Detect language from extension (VS Code style); fallback to _selectedLangForNewFile
   const lang = detectLangFromFilename(name) || _selectedLangForNewFile;
   const id = 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-  const defaultContent = (LANGUAGES[lang] && LANGUAGES[lang].defaultCode) || '';
+  // New files must start blank. Language is still detected from the extension.
+  const defaultContent = '';
   const newFile = {
     id,
     dbId: null,
