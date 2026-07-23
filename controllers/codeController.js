@@ -87,7 +87,9 @@ class CodeController {
         errorOutput.includes('NullReferenceException')
       );
 
-      if (!waitingForInput) {
+      // Guest runs are executed but are not stored. Logged-in runs are
+      // stored and linked to the saved user file when file_id is available.
+      if (!waitingForInput && req.user?.id) {
         ExecutionModel.saveExecution({
           user_id: req.user.id,
           file_id,

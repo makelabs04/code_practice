@@ -83,10 +83,11 @@ body {
 /* ── Layout Shell ──────────────────────────────────────────────── */
 #app {
   display: grid;
-  grid-template-rows: var(--topbar-height) 1fr;
+  grid-template-rows: var(--topbar-height) auto 1fr;
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-areas:
     "topbar topbar"
+    "guest guest"
     "sidebar main";
   height: 100vh;
   width: 100vw;
@@ -878,8 +879,8 @@ body #editor-wrapper .CodeMirror.cm-s-dracula span.cm-punctuation {
 @media (max-width: 540px) {
   #app {
     grid-template-columns: 1fr;
-    grid-template-areas: "topbar" "main";
-    grid-template-rows: var(--topbar-height) 1fr;
+    grid-template-areas: "topbar" "guest" "main";
+    grid-template-rows: var(--topbar-height) auto 1fr;
   }
   #main { flex-direction: column; }
   #resize-handle { display: none; }
@@ -928,3 +929,6 @@ body #editor-wrapper .CodeMirror.cm-s-dracula span.cm-punctuation {
   .modal { width: 100%; border-radius: 0; margin: 0; }
   .examples-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* Public guest/SEO banner */
+.guest-mode-banner{grid-area:guest;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:8px 16px;background:#eaf8fe;border-bottom:1px solid rgba(0,173,238,.28);color:#173246;z-index:90}.guest-seo-copy{min-width:0}.guest-seo-copy h1{font-size:13px;line-height:1.35;margin:0;color:#0f2b3d;font-weight:700}.guest-seo-copy p{font-size:10.5px;line-height:1.4;margin:2px 0 0;color:#557080;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.guest-banner-actions{display:flex;gap:7px;flex-shrink:0}.guest-banner-actions button{border-radius:7px;padding:6px 10px;font:600 10.5px Poppins,Arial,sans-serif;cursor:pointer}.guest-banner-actions button:first-child{border:1px solid #00adee;background:#fff;color:#008ec4}.guest-banner-actions button:last-child{border:1px solid #00adee;background:#00adee;color:#fff}@media(max-width:760px){.guest-mode-banner{padding:6px 8px}.guest-seo-copy h1{font-size:11px}.guest-seo-copy p{display:none}.guest-banner-actions button{padding:5px 7px;font-size:9px}.guest-banner-actions button:first-child{display:none}}

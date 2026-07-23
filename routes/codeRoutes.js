@@ -2,24 +2,16 @@
 const express = require('express');
 const router = express.Router();
 const requireAuth = require('../middleware/auth');
-router.use(requireAuth);
+const optionalAuth = require('../middleware/optionalAuth');
 const CodeController = require('../controllers/codeController');
 
-// @route   POST /api/code/run
-// @desc    Execute code
+// Public routes: guests can inspect languages and run temporary code.
 router.get('/health', CodeController.health);
-router.post('/run', CodeController.runCode);
-
-// @route   GET /api/code/languages
-// @desc    Get all supported languages
 router.get('/languages', CodeController.getLanguages);
-
-// @route   GET /api/code/languages/:id/default
-// @desc    Get default starter code for a language
 router.get('/languages/:id/default', CodeController.getDefaultCode);
+router.post('/run', optionalAuth, CodeController.runCode);
 
-// @route   GET /api/code/stats
-// @desc    Get execution statistics
-router.get('/stats', CodeController.getStats);
+// Personal statistics remain private.
+router.get('/stats', requireAuth, CodeController.getStats);
 
 module.exports = router;

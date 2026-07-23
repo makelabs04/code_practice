@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /code_practice_progress_admin_user_files.php
+
+Sitemap: https://onlinecompiler.makelearners.com/sitemap.xml

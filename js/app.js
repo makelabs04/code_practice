@@ -370,7 +370,7 @@ const $$ = sel => document.querySelectorAll(sel);
 
 // ── Init ──────────────────────────────────────────────────────────────
 let cmEditor;
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
   cmEditor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
     mode: 'python',
@@ -390,7 +390,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   buildLangTabs();
   buildSidebarBtns();
-  setLanguage('python');
+  const requestedLang = new URLSearchParams(window.location.search).get('lang');
+  setLanguage(LANGUAGES[requestedLang] ? requestedLang : 'python');
   bindEditorEvents();
   bindResizeHandle();
   bindFmResizeHandle();
@@ -398,7 +399,8 @@ document.addEventListener('DOMContentLoaded', () => {
   updateStatusBar();
   showWelcomeOutput();
   injectDynamicStyles();
-  initFileManager();
+  await initFileManager();
+  await restorePendingGuestSave();
 
   const savedTheme = localStorage.getItem('cc-theme');
   if (savedTheme === 'light') {
@@ -1256,7 +1258,18 @@ function bindTopbarActions() {
 
 async function saveUserFile() {
   if (!window.Auth || !window.Auth.token()) {
-    showToast('Please login before saving a file', 'warning');
+    const activeGuestFile = state.files.find(file => file.id === state.activeFileId);
+    const pendingFile = activeGuestFile || {
+      id: 'guest_' + Date.now(),
+      dbId: null,
+      name: $('editor-filename')?.textContent?.trim() || `main${LANGUAGES[state.currentLang]?.ext || '.txt'}`,
+      language: state.currentLang,
+      content: cmEditor?.getValue?.() || '',
+    };
+    pendingFile.content = cmEditor?.getValue?.() || pendingFile.content || '';
+    localStorage.setItem('cc-pending-save', JSON.stringify(pendingFile));
+    saveFilesToStorage();
+    window.Auth.open('register', 'Create a free account to save this file permanently. Your current code will be kept.');
     return;
   }
 
@@ -1334,6 +1347,39 @@ async function saveUserFile() {
   } finally {
     if (saveButton) saveButton.disabled = false;
     if (modalSaveButton) modalSaveButton.disabled = false;
+  }
+}
+
+
+async function restorePendingGuestSave() {
+  if (!window.Auth?.isLoggedIn()) return;
+  const raw = localStorage.getItem('cc-pending-save');
+  if (!raw) return;
+
+  try {
+    const pending = JSON.parse(raw);
+    let file = state.files.find(item => item.name === pending.name && !item.dbId);
+    if (!file) {
+      file = {
+        id: pending.id || ('f_' + Date.now()),
+        dbId: null,
+        name: pending.name,
+        language: pending.language || detectLangFromFilename(pending.name) || 'python',
+        content: pending.content || '',
+      };
+      state.files.push(file);
+    } else {
+      file.content = pending.content || file.content;
+    }
+
+    state.activeFileId = file.id;
+    saveFilesToStorage();
+    renderFileTree();
+    openFile(file.id);
+    localStorage.removeItem('cc-pending-save');
+    await saveUserFile();
+  } catch (error) {
+    console.error('Pending guest save restore failed:', error);
   }
 }
 
@@ -1438,28 +1484,42 @@ async function initFileManager() {
     try { cachedFiles = JSON.parse(saved); } catch { cachedFiles = []; }
   }
 
-  try {
-    const response = await fetch(`${API_BASE}/files`, {
-      headers: { ...window.Auth.headers() },
-    });
-    const data = await response.json();
-    if (response.ok && data.success) {
-      const serverFiles = data.files.map(file => ({
-        id: `db_${file.id}`,
-        dbId: file.id,
-        name: file.file_name,
-        language: file.language,
-        content: file.source_code,
-        createdAt: file.created_at,
-        updatedAt: file.updated_at,
-      }));
-      const unsavedLocalFiles = cachedFiles.filter(file => !file.dbId);
-      state.files = [...serverFiles, ...unsavedLocalFiles];
-      saveFilesToStorage();
-    } else {
+  if (window.Auth?.isLoggedIn()) {
+    // Bring temporary guest files into the signed-in browser workspace.
+    try {
+      const guestCached = JSON.parse(localStorage.getItem('ml-files-guest') || '[]');
+      const knownNames = new Set(cachedFiles.map(file => file.name));
+      for (const guestFile of guestCached) {
+        if (!knownNames.has(guestFile.name)) cachedFiles.push({ ...guestFile, dbId: null });
+      }
+    } catch {}
+
+    try {
+      const response = await fetch(`${API_BASE}/files`, {
+        headers: { ...window.Auth.headers() },
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        const serverFiles = data.files.map(file => ({
+          id: `db_${file.id}`,
+          dbId: file.id,
+          name: file.file_name,
+          language: file.language,
+          content: file.source_code,
+          createdAt: file.created_at,
+          updatedAt: file.updated_at,
+        }));
+        const serverNames = new Set(serverFiles.map(file => file.name));
+        const unsavedLocalFiles = cachedFiles.filter(file => !file.dbId && !serverNames.has(file.name));
+        state.files = [...serverFiles, ...unsavedLocalFiles];
+        saveFilesToStorage();
+      } else {
+        state.files = cachedFiles;
+      }
+    } catch {
       state.files = cachedFiles;
     }
-  } catch {
+  } else {
     state.files = cachedFiles;
   }
 
@@ -1758,6 +1818,10 @@ function escapeHtml(str) {
 let currentChatHistory = [];
 
 async function askAI() {
+  if (!window.Auth?.isLoggedIn()) {
+    window.Auth.open('login', 'Login to use the AI Code Assistant.');
+    return;
+  }
   if (!cmEditor) return;
   const code = cmEditor.getValue().trim();
   if (!code) { showToast('Please write some code first!', 'warning'); return; }

@@ -3,9 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MakeLabs — Online Compiler & IDE</title>
+  <title>Free Online Compiler - Run Python, Java, C, C++ & More | MakeLearners</title>
   <link rel="icon" type="image/png" href="./images/logo.png" />
-  <meta name="description" content="Run Java, Python, C++, C, C#, JavaScript, PHP, TypeScript, Go, Rust, Kotlin online." />
+  <meta name="description" content="Free online compiler to write and run Python, Java, C, C++, JavaScript, PHP, Go, Rust and more. Use Guest Mode instantly or create a free account to save files permanently." />
+  <meta name="keywords" content="online compiler, python online compiler, java online compiler, c compiler online, c++ online compiler, javascript compiler, coding practice, run code online" />
+  <meta name="author" content="MakeLearners" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://onlinecompiler.makelearners.com/" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="MakeLearners" />
+  <meta property="og:title" content="Free Online Compiler | MakeLearners" />
+  <meta property="og:description" content="Write and run code online in Python, Java, C, C++, JavaScript and more. Guest access is free; sign in to save files across devices." />
+  <meta property="og:url" content="https://onlinecompiler.makelearners.com/" />
+  <meta property="og:image" content="https://onlinecompiler.makelearners.com/images/online-compiler-preview.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Free Online Compiler | MakeLearners" />
+  <meta name="twitter:description" content="Run code instantly without login. Create a free account to save and continue from any device." />
+  <meta name="twitter:image" content="https://onlinecompiler.makelearners.com/images/online-compiler-preview.jpg" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "MakeLearners Online Compiler",
+    "url": "https://onlinecompiler.makelearners.com/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Web Browser",
+    "description": "Free browser-based online compiler for Python, Java, C, C++, JavaScript, PHP, Go, Rust and other languages.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+    "publisher": { "@type": "Organization", "name": "MakeLearners", "url": "https://makelearners.com/" }
+  }
+  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -304,16 +333,21 @@
   </style>
 </head>
 <body>
-<div id="auth-screen">
+<div id="auth-screen" class="hidden" role="dialog" aria-modal="true" aria-labelledby="auth-heading">
   <div class="auth-card">
-    <div class="auth-brand"><img src="./images/logo.png" alt="MakeLabs"><h1>Code Practice</h1><p>Register or login to continue coding</p></div>
-    <div class="auth-tabs"><button class="auth-tab active" data-tab="login">Login</button><button class="auth-tab" data-tab="register">Register</button></div>
+    <button type="button" id="auth-close" class="auth-close" aria-label="Close login">✕</button>
+    <div class="auth-brand">
+      <img src="./images/logo.png" alt="MakeLearners Online Compiler">
+      <h2 id="auth-heading">Save your coding workspace</h2>
+      <p>Login or create a free account to save files permanently and continue from any device.</p>
+    </div>
+    <div class="auth-tabs"><button type="button" class="auth-tab active" data-tab="login">Login</button><button type="button" class="auth-tab" data-tab="register">Register</button></div>
     <form id="login-form" class="auth-form active"><div class="auth-field"><label>Email</label><input type="email" name="email" required></div><div class="auth-field"><label>Password</label><input type="password" name="password" required></div><button class="auth-submit">Login</button></form>
-    <form id="register-form" class="auth-form"><div class="auth-field"><label>Full Name</label><input name="name" minlength="2" required></div><div class="auth-field"><label>Email</label><input type="email" name="email" required></div><div class="auth-field"><label>Password</label><input type="password" name="password" minlength="8" required></div><button class="auth-submit">Create Account</button></form>
+    <form id="register-form" class="auth-form"><div class="auth-field"><label>Full Name</label><input name="name" minlength="2" required></div><div class="auth-field"><label>Email</label><input type="email" name="email" required></div><div class="auth-field"><label>Password</label><input type="password" name="password" minlength="8" required></div><button class="auth-submit">Create Free Account</button></form>
     <div id="auth-message" class="auth-message"></div>
+    <button type="button" id="continue-as-guest" class="continue-guest">Continue coding as guest</button>
   </div>
 </div>
-
 
 <div id="app">
 
@@ -332,7 +366,11 @@
     </div>
 
     <div class="topbar-actions">
-      <div class="auth-user"><span id="auth-user-name" class="auth-user-name">User</span><button type="button" id="auth-logout" class="auth-logout" onclick="window.Auth && window.Auth.logout()">Logout</button></div>
+      <div id="guest-auth-actions" class="guest-auth-actions">
+        <button type="button" id="guest-login-btn" class="guest-login-btn">Login</button>
+        <button type="button" id="guest-register-btn" class="guest-register-btn">Register Free</button>
+      </div>
+      <div id="auth-user-box" class="auth-user hidden"><span id="auth-user-name" class="auth-user-name">User</span><button type="button" id="auth-logout" class="auth-logout">Logout</button></div>
       <!-- Backend live status indicator -->
       <div id="backend-status" title="Backend connection status">
         <span class="dot"></span>
@@ -359,6 +397,17 @@
       </button>
     </div>
   </header>
+
+  <section id="guest-mode-banner" class="guest-mode-banner" aria-label="Guest mode information">
+    <div class="guest-seo-copy">
+      <h1>Free Online Compiler for Python, Java, C, C++, JavaScript and More</h1>
+      <p>Write and run code instantly in Guest Mode. Register free to save files permanently, view run history and continue on another device.</p>
+    </div>
+    <div class="guest-banner-actions">
+      <button type="button" id="guest-banner-login">Login</button>
+      <button type="button" id="guest-banner-register">Create Free Account</button>
+    </div>
+  </section>
 
   <!-- ── SIDEBAR ── -->
   <aside id="sidebar"></aside>
