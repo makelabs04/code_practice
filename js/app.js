@@ -1215,13 +1215,15 @@ function bindTopbarActions() {
     navigator.clipboard.writeText(code).then(() => showToast('Code copied!', 'success'));
   });
 
-  // Save the currently open editor file directly to MySQL snippets.
+  // Save buttons: all of these must store the current code in MySQL snippets.
   const saveButton = $('btn-save');
   if (saveButton) saveButton.addEventListener('click', saveSnippet);
 
-  // Keep the modal save button working too, if it exists.
+  const quickSaveButton = $('save-snippet-btn');
+  if (quickSaveButton) quickSaveButton.addEventListener('click', saveSnippet);
+
   const modalSaveButton = $('btn-do-save');
-  if (modalSaveButton) modalSaveButton.addEventListener('click', saveSnippet);
+  if (modalSaveButton) saveSnippetButtonBound(modalSaveButton);
 
   $$('.output-tab').forEach(tab => tab.addEventListener('click', () => setOutputTab(tab.dataset.tab)));
   $$('.modal-close').forEach(btn =>
@@ -1247,6 +1249,10 @@ function bindTopbarActions() {
       window.open(`https://wa.me/?text=Check out my code: ${url}`, '_blank');
     });
   }
+}
+
+function saveSnippetButtonBound(button) {
+  button.addEventListener('click', saveSnippet);
 }
 
 async function saveSnippet() {
@@ -1281,8 +1287,10 @@ async function saveSnippet() {
   }
 
   const saveButton = $('btn-save');
+  const quickSaveButton = $('save-snippet-btn');
   const modalSaveButton = $('btn-do-save');
   if (saveButton) saveButton.disabled = true;
+  if (quickSaveButton) quickSaveButton.disabled = true;
   if (modalSaveButton) modalSaveButton.disabled = true;
 
   try {
@@ -1334,6 +1342,7 @@ async function saveSnippet() {
     showToast(error.message || 'Backend connection required', 'error');
   } finally {
     if (saveButton) saveButton.disabled = false;
+    if (quickSaveButton) quickSaveButton.disabled = false;
     if (modalSaveButton) modalSaveButton.disabled = false;
   }
 }
