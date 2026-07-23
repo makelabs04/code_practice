@@ -1215,8 +1215,13 @@ function bindTopbarActions() {
     navigator.clipboard.writeText(code).then(() => showToast('Code copied!', 'success'));
   });
 
-  $('btn-save').addEventListener('click', () => openModal('save-modal'));
-  $('btn-do-save').addEventListener('click', saveSnippet);
+  // Save the currently open editor file directly to MySQL snippets.
+  const saveButton = $('btn-save');
+  if (saveButton) saveButton.addEventListener('click', saveSnippet);
+
+  // Keep the modal save button working too, if it exists.
+  const modalSaveButton = $('btn-do-save');
+  if (modalSaveButton) modalSaveButton.addEventListener('click', saveSnippet);
 
   $$('.output-tab').forEach(tab => tab.addEventListener('click', () => setOutputTab(tab.dataset.tab)));
   $$('.modal-close').forEach(btn =>
@@ -1245,26 +1250,91 @@ function bindTopbarActions() {
 }
 
 async function saveSnippet() {
-  const title = $('snippet-title').value.trim() || 'Untitled Snippet';
+  if (!window.Auth || !window.Auth.token()) {
+    showToast('Please login before saving a file', 'warning');
+    return;
+  }
+
+  if (!cmEditor || typeof cmEditor.getValue !== 'function') {
+    showToast('Code editor is not ready. Please refresh and try again.', 'error');
+    return;
+  }
+
   const code = cmEditor.getValue();
-  const isPublic = $('snippet-public').checked;
+  if (!code.trim()) {
+    showToast('Cannot save an empty file', 'warning');
+    return;
+  }
+
+  const activeFile = state.files.find(file => file.id === state.activeFileId);
+  const displayedName = $('editor-filename')?.textContent?.trim() || '';
+  const fileName = activeFile?.name || displayedName || `main${LANGUAGES[state.currentLang]?.ext || ''}`;
+  const automaticTitle = fileName.replace(/\.[^.]+$/, '').trim() || 'Untitled Snippet';
+  const modalTitle = $('snippet-title')?.value?.trim();
+  const title = modalTitle || automaticTitle;
+  const isPublic = $('snippet-public') ? $('snippet-public').checked : false;
+
+  // Keep the latest editor content in the browser file manager too.
+  if (activeFile) {
+    activeFile.content = code;
+    saveFilesToStorage();
+  }
+
+  const saveButton = $('btn-save');
+  const modalSaveButton = $('btn-do-save');
+  if (saveButton) saveButton.disabled = true;
+  if (modalSaveButton) modalSaveButton.disabled = true;
+
   try {
     const res = await fetch(`${API_BASE}/snippets`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...window.Auth.headers() },
-      body: JSON.stringify({ title, language: state.currentLang, source_code: code, is_public: isPublic }),
+      headers: {
+        'Content-Type': 'application/json',
+        ...window.Auth.headers(),
+      },
+      body: JSON.stringify({
+        title,
+        language: state.currentLang,
+        source_code: code,
+        is_public: isPublic,
+      }),
     });
-    const data = await res.json();
-    if (data.success) {
-      closeModal('save-modal');
-      const shareUrl = `${window.location.origin}/snippet/${data.id}`;
+
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error('Invalid response from the server');
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('Your login session expired. Please logout and login again.');
+    }
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Unable to save the file');
+    }
+
+    closeModal('save-modal');
+
+    if ($('snippet-title')) $('snippet-title').value = '';
+
+    const shareUrl = data.share_url
+      ? `${window.location.origin}${data.share_url}`
+      : `${window.location.origin}/snippet/${data.id}`;
+
+    if ($('share-url')) {
       $('share-url').value = shareUrl;
       openModal('share-modal');
-      showToast('Snippet saved!', 'success');
-    } else { showToast(data.message || 'Save failed', 'error'); }
-  } catch {
-    closeModal('save-modal');
-    showToast('Backend connection required', 'warning');
+    }
+
+    showToast(`${fileName} saved successfully`, 'success');
+  } catch (error) {
+    console.error('Save snippet error:', error);
+    showToast(error.message || 'Backend connection required', 'error');
+  } finally {
+    if (saveButton) saveButton.disabled = false;
+    if (modalSaveButton) modalSaveButton.disabled = false;
   }
 }
 
