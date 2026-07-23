@@ -26,7 +26,7 @@ class CodeController {
   // ── POST /api/code/run ──────────────────────────────────────────
   static async runCode(req, res) {
     try {
-      const { language, source_code, stdin = '' } = req.body;
+      const { language, source_code, stdin = '', file_id = null } = req.body;
 
       if (!language || !source_code) {
         return res.status(400).json({
@@ -80,6 +80,7 @@ class CodeController {
 
       ExecutionModel.saveExecution({
         user_id: req.user.id,
+        file_id,
         language,
         source_code,
         stdin,

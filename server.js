@@ -11,7 +11,7 @@ const Groq = require('groq-sdk');
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 // Route imports
 const codeRoutes = require('./routes/codeRoutes');
-const snippetRoutes = require('./routes/snippetRoutes');
+const userFileRoutes = require('./routes/userFileRoutes');
 const authRoutes = require('./routes/authRoutes');
 const requireAuth = require('./middleware/auth');
 
@@ -104,7 +104,7 @@ app.post('/api/ai/chat', requireAuth, async (req, res) => {
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/code', codeRoutes);
-app.use('/api/snippets', snippetRoutes);
+app.use('/api/files', userFileRoutes);
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);

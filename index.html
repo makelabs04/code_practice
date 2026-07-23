@@ -348,15 +348,12 @@
           <path d="M9 3h6l1 1h4v2H4V4h4zm-4 4h14l-1 13H6L5 7zm5 2v9h1V9zm4 0v9h1V9z"/>
         </svg>
       </button>
-      <button class="btn-secondary" id="btn-save" title="Save & Share">
-        <span>🔗</span><span class="btn-label">Share</span>
+      <button class="btn-secondary" id="btn-save" title="Save File">
+        <span>💾</span><span class="btn-label">Save</span>
       </button>
       <button class="btn-run" id="run-btn">
         <span class="run-icon">▶</span> Run
       </button>
-      <button type="button" id="save-snippet-btn">
-        💾 Save File
-    </button>
       <button class="btn-secondary" id="btn-ask-ai" title="Get AI Help" style="border-color: #a371f7; color: #a371f7;">
         <span>✨</span><span class="btn-label">Ask AI</span>
       </button>
@@ -582,22 +579,22 @@
 <div class="modal-overlay" id="save-modal">
   <div class="modal">
     <div class="modal-header">
-      <h3 class="modal-title">🔗 Save & Share Snippet</h3>
+      <h3 class="modal-title">💾 Save File</h3>
       <button class="modal-close" aria-label="Close">✕</button>
     </div>
     <div class="form-group">
-      <label for="snippet-title">Snippet Title</label>
-      <input type="text" id="snippet-title" placeholder="My awesome code..." maxlength="120" />
+      <label for="file-save-name">File Name</label>
+      <input type="text" id="file-save-name" placeholder="main.py" maxlength="120" />
     </div>
     <div class="form-group">
       <div style="display:flex;align-items:center;gap:8px;">
-        <input type="checkbox" id="snippet-public" checked style="width:16px;height:16px;cursor:pointer;" />
-        <label for="snippet-public" style="font-size:13px;color:var(--text-secondary);cursor:pointer;margin:0;">
-          Make this snippet public
+        <input type="checkbox" id="file-save-confirm" checked style="width:16px;height:16px;cursor:pointer;" />
+        <label for="file-save-confirm" style="font-size:13px;color:var(--text-secondary);cursor:pointer;margin:0;">
+          Save this file to your account
         </label>
       </div>
     </div>
-    <button class="btn-primary" id="btn-do-save">Save Snippet</button>
+    <button class="btn-primary" id="btn-do-save">Save File</button>
   </div>
 </div>
 

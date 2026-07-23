@@ -8,12 +8,13 @@ class ExecutionModel {
       const id = uuidv4();
       const sql = `
         INSERT INTO code_executions 
-        (id, user_id, language, source_code, stdin, stdout, stderr, exit_code, execution_time, memory_used, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        (id, user_id, file_id, language, source_code, stdin, stdout, stderr, exit_code, execution_time, memory_used, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `;
       const values = [
         id,
         data.user_id,
+        data.file_id || null,
         data.language,
         data.source_code,
         data.stdin || '',
@@ -35,7 +36,7 @@ class ExecutionModel {
   static async getRecentExecutions(userId, limit = 10) {
     try {
       const [rows] = await pool.execute(
-        `SELECT id, language, LEFT(source_code, 100) as code_preview, status, execution_time, created_at 
+        `SELECT id, file_id, language, LEFT(source_code, 100) as code_preview, status, execution_time, created_at 
          FROM code_executions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`,
         [userId, limit]
       );

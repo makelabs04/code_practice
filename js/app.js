@@ -18,7 +18,7 @@ const state = {
   backendOnline: false,
 
   // File Manager state
-  files: [],               // Array of { id, name, language, content }
+  files: [],               // Array of { id, dbId, name, language, content }
   activeFileId: null,
   fmCollapsed: false,
 };
@@ -633,7 +633,12 @@ async function runCode() {
     const response = await fetch(`${API_BASE}/code/run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...window.Auth.headers() },
-      body: JSON.stringify({ language: state.currentLang, source_code: code, stdin }),
+      body: JSON.stringify({
+        language: state.currentLang,
+        source_code: code,
+        stdin,
+        file_id: state.files.find(file => file.id === state.activeFileId)?.dbId || null,
+      }),
     });
     const data = await response.json();
     const elapsed = Date.now() - startTime;
@@ -1215,15 +1220,13 @@ function bindTopbarActions() {
     navigator.clipboard.writeText(code).then(() => showToast('Code copied!', 'success'));
   });
 
-  // Save buttons: all of these must store the current code in MySQL snippets.
+  // Save the currently open editor file to MySQL user_files.
   const saveButton = $('btn-save');
-  if (saveButton) saveButton.addEventListener('click', saveSnippet);
+  if (saveButton) saveButton.addEventListener('click', saveUserFile);
 
-  const quickSaveButton = $('save-snippet-btn');
-  if (quickSaveButton) quickSaveButton.addEventListener('click', saveSnippet);
-
+  // Keep the modal save button working too, if it exists.
   const modalSaveButton = $('btn-do-save');
-  if (modalSaveButton) saveSnippetButtonBound(modalSaveButton);
+  if (modalSaveButton) modalSaveButton.addEventListener('click', saveUserFile);
 
   $$('.output-tab').forEach(tab => tab.addEventListener('click', () => setOutputTab(tab.dataset.tab)));
   $$('.modal-close').forEach(btn =>
@@ -1251,11 +1254,7 @@ function bindTopbarActions() {
   }
 }
 
-function saveSnippetButtonBound(button) {
-  button.addEventListener('click', saveSnippet);
-}
-
-async function saveSnippet() {
+async function saveUserFile() {
   if (!window.Auth || !window.Auth.token()) {
     showToast('Please login before saving a file', 'warning');
     return;
@@ -1266,83 +1265,74 @@ async function saveSnippet() {
     return;
   }
 
-  const code = cmEditor.getValue();
-  if (!code.trim()) {
-    showToast('Cannot save an empty file', 'warning');
-    return;
+  let activeFile = state.files.find(file => file.id === state.activeFileId);
+
+  // Scratch editor: create a real file first, then save it.
+  if (!activeFile) {
+    const lang = LANGUAGES[state.currentLang] || LANGUAGES.python;
+    const fileName = $('editor-filename')?.textContent?.trim() || `main${lang.ext || '.txt'}`;
+    activeFile = {
+      id: 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      dbId: null,
+      name: fileName,
+      language: state.currentLang,
+      content: cmEditor.getValue(),
+    };
+    state.files.push(activeFile);
+    state.activeFileId = activeFile.id;
   }
 
-  const activeFile = state.files.find(file => file.id === state.activeFileId);
-  const displayedName = $('editor-filename')?.textContent?.trim() || '';
-  const fileName = activeFile?.name || displayedName || `main${LANGUAGES[state.currentLang]?.ext || ''}`;
-  const automaticTitle = fileName.replace(/\.[^.]+$/, '').trim() || 'Untitled Snippet';
-  const modalTitle = $('snippet-title')?.value?.trim();
-  const title = modalTitle || automaticTitle;
-  const isPublic = $('snippet-public') ? $('snippet-public').checked : false;
-
-  // Keep the latest editor content in the browser file manager too.
-  if (activeFile) {
-    activeFile.content = code;
-    saveFilesToStorage();
-  }
+  activeFile.content = cmEditor.getValue();
+  activeFile.language = detectLangFromFilename(activeFile.name) || state.currentLang;
 
   const saveButton = $('btn-save');
-  const quickSaveButton = $('save-snippet-btn');
   const modalSaveButton = $('btn-do-save');
   if (saveButton) saveButton.disabled = true;
-  if (quickSaveButton) quickSaveButton.disabled = true;
   if (modalSaveButton) modalSaveButton.disabled = true;
 
   try {
-    const res = await fetch(`${API_BASE}/snippets`, {
-      method: 'POST',
+    const updating = Boolean(activeFile.dbId);
+    const url = updating
+      ? `${API_BASE}/files/${activeFile.dbId}`
+      : `${API_BASE}/files`;
+
+    const response = await fetch(url, {
+      method: updating ? 'PUT' : 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...window.Auth.headers(),
       },
       body: JSON.stringify({
-        title,
-        language: state.currentLang,
-        source_code: code,
-        is_public: isPublic,
+        file_name: activeFile.name,
+        language: activeFile.language,
+        source_code: activeFile.content,
       }),
     });
 
-    let data = {};
-    try {
-      data = await res.json();
-    } catch {
-      throw new Error('Invalid response from the server');
-    }
-
-    if (res.status === 401 || res.status === 403) {
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401 || response.status === 403) {
       throw new Error('Your login session expired. Please logout and login again.');
     }
-
-    if (!res.ok || !data.success) {
+    if (!response.ok || !data.success || !data.file) {
       throw new Error(data.message || 'Unable to save the file');
     }
 
+    activeFile.dbId = data.file.id;
+    activeFile.name = data.file.file_name;
+    activeFile.language = data.file.language;
+    activeFile.content = data.file.source_code;
+    activeFile.createdAt = data.file.created_at;
+    activeFile.updatedAt = data.file.updated_at;
+
+    saveFilesToStorage();
+    renderFileTree();
     closeModal('save-modal');
-
-    if ($('snippet-title')) $('snippet-title').value = '';
-
-    const shareUrl = data.share_url
-      ? `${window.location.origin}${data.share_url}`
-      : `${window.location.origin}/snippet/${data.id}`;
-
-    if ($('share-url')) {
-      $('share-url').value = shareUrl;
-      openModal('share-modal');
-    }
-
-    showToast(`${fileName} saved successfully`, 'success');
+    showToast(updating ? `${activeFile.name} updated` : `${activeFile.name} saved`, 'success');
   } catch (error) {
-    console.error('Save snippet error:', error);
+    console.error('Save file error:', error);
     showToast(error.message || 'Backend connection required', 'error');
   } finally {
     if (saveButton) saveButton.disabled = false;
-    if (quickSaveButton) quickSaveButton.disabled = false;
     if (modalSaveButton) modalSaveButton.disabled = false;
   }
 }
@@ -1439,16 +1429,42 @@ function bindFmResizeHandle() {
 }
 
 // ── File Manager ──────────────────────────────────────────────────────
-function initFileManager() {
-  // Load saved files from localStorage
+async function initFileManager() {
+  // Use MySQL user_files as the primary source.
+  // localStorage is kept only as an offline cache and for unsaved new files.
+  let cachedFiles = [];
   const saved = localStorage.getItem(window.Auth.storageKey('ml-files'));
   if (saved) {
-    try { state.files = JSON.parse(saved); } catch { state.files = []; }
+    try { cachedFiles = JSON.parse(saved); } catch { cachedFiles = []; }
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/files`, {
+      headers: { ...window.Auth.headers() },
+    });
+    const data = await response.json();
+    if (response.ok && data.success) {
+      const serverFiles = data.files.map(file => ({
+        id: `db_${file.id}`,
+        dbId: file.id,
+        name: file.file_name,
+        language: file.language,
+        content: file.source_code,
+        createdAt: file.created_at,
+        updatedAt: file.updated_at,
+      }));
+      const unsavedLocalFiles = cachedFiles.filter(file => !file.dbId);
+      state.files = [...serverFiles, ...unsavedLocalFiles];
+      saveFilesToStorage();
+    } else {
+      state.files = cachedFiles;
+    }
+  } catch {
+    state.files = cachedFiles;
   }
 
   renderFileTree();
 
-  // Bind FM buttons
   const btnNew = $('btn-fm-new-file');
   if (btnNew) btnNew.addEventListener('click', openNewFileModal);
 
@@ -1458,7 +1474,6 @@ function initFileManager() {
   const btnDownload = $('btn-fm-download');
   if (btnDownload) btnDownload.addEventListener('click', downloadAllFilesAsZip);
 
-  // Bind new-file modal
   buildLangPicker();
   const btnCreate = $('btn-create-file');
   if (btnCreate) btnCreate.addEventListener('click', createNewFile);
@@ -1566,8 +1581,27 @@ function openFile(fileId) {
   showToast(`Opened ${file.name}`, 'info');
 }
 
-function deleteFile(fileId) {
-  state.files = state.files.filter(f => f.id !== fileId);
+async function deleteFile(fileId) {
+  const file = state.files.find(item => item.id === fileId);
+  if (!file) return;
+
+  if (file.dbId) {
+    try {
+      const response = await fetch(`${API_BASE}/files/${file.dbId}`, {
+        method: 'DELETE',
+        headers: { ...window.Auth.headers() },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Unable to delete file');
+      }
+    } catch (error) {
+      showToast(error.message || 'Unable to delete file', 'error');
+      return;
+    }
+  }
+
+  state.files = state.files.filter(item => item.id !== fileId);
   if (state.activeFileId === fileId) state.activeFileId = null;
   saveFilesToStorage();
   renderFileTree();
@@ -1666,6 +1700,7 @@ function createNewFile() {
   const defaultContent = (LANGUAGES[lang] && LANGUAGES[lang].defaultCode) || '';
   const newFile = {
     id,
+    dbId: null,
     name,
     language: lang,
     content: defaultContent,
