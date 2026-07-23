@@ -78,18 +78,29 @@ class CodeController {
 
       const errorOutput = [compileOutput, stderr].filter(Boolean).join('\n').trim();
 
-      ExecutionModel.saveExecution({
-        user_id: req.user.id,
-        file_id,
-        language,
-        source_code,
-        stdin,
-        stdout,
-        stderr: errorOutput,
-        exit_code: exitCode,
-        execution_time: executionTime,
-        status: result.status?.id === 3 ? 'completed' : 'error',
-      }).catch(() => {});
+      // The frontend first executes input-based programs with empty stdin so it can
+      // detect the prompt and show the inline input field. Judge0 returns EOF-type
+      // errors for that temporary probe. Do not store that probe as a real run.
+      const waitingForInput = !stdin && Boolean(errorOutput) && (
+        errorOutput.includes('EOFError') ||
+        errorOutput.includes('NoSuchElementException') ||
+        errorOutput.includes('NullReferenceException')
+      );
+
+      if (!waitingForInput) {
+        ExecutionModel.saveExecution({
+          user_id: req.user.id,
+          file_id,
+          language,
+          source_code,
+          stdin,
+          stdout,
+          stderr: errorOutput,
+          exit_code: exitCode,
+          execution_time: executionTime,
+          status: result.status?.id === 3 ? 'completed' : 'error',
+        }).catch(() => {});
+      }
 
       return res.json({
         success:        true,
